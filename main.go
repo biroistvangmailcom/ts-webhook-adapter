@@ -88,7 +88,22 @@ func sendTeamsWebhook(orig incomingWebhook) {
         return
     }
 
-    // Rest of your existing HTTP request code...
+    // Add the missing HTTP request code
+    req, err := http.NewRequest(http.MethodPost, webhookUrl, bytes.NewBuffer(body))
+    if err != nil {
+        log.Printf("[%s] sendTeamsWebhook http.NewRequest failed: %v", time.Now().Format(time.RFC3339), err)
+        return
+    }
+
+    req.Header.Add("Content-Type", "application/json")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        log.Printf("[%s] sendTeamsWebhook client.Do failed: %v", time.Now().Format(time.RFC3339), err)
+        return
+    }
+    defer resp.Body.Close()
 }
 
 func createFacts(data map[string]string) []map[string]string {
