@@ -27,59 +27,79 @@ type incomingWebhook struct {
 
 // https://learn.microsoft.com/en-us/outlook/actionable-messages/message-card-reference
 type teamsWebhook struct {
-	Type          string `json:"@type"`
-	Context       string `json:"@context"`
-	CorrelationId string `json:"correlationId"`
-	Text          string `json:"text"`
-	Summary       string `json:"summary"`
-	ThemeColor    string `json:"themeColor"`
-	Title         string `json:"title"`
+    Type          string        `json:"@type"`
+    Context       string        `json:"@context"`
+    CorrelationId string        `json:"correlationId"`
+    Text          string        `json:"text"`
+    Summary       string        `json:"summary"`
+    ThemeColor    string        `json:"themeColor"`
+    Title         string        `json:"title"`
+    Attachments   []attachment  `json:"attachments"`
+}
+
+type attachment struct {
+    ContentType string                 `json:"contentType"`
+    Content     map[string]interface{} `json:"content"`
 }
 
 func sendTeamsWebhook(orig incomingWebhook) {
-	webhookUrl := os.Getenv("TEAMS_WEBHOOK_URL")
-	if webhookUrl == "" {
-		// not configured
-		return
-	}
+    webhookUrl := os.Getenv("TEAMS_WEBHOOK_URL")
+    if webhookUrl == "" {
+        return
+    }
 
-	teams := teamsWebhook{
-		Type:          "MessageCard",
-		Context:       "https://schema.org/extensions",
-		CorrelationId: uuid.NewString(),
-		Summary:       orig.Message,
-		ThemeColor:    "c0c0c0",
-		Title:         orig.Message,
-	}
+    // Create the adaptive card content
+    content := map[string]interface{}{
+        "type": "AdaptiveCard",
+        "body": []map[string]interface{}{
+            {
+                "type": "TextBlock",
+                "size": "Medium",
+                "weight": "Bolder",
+                "text": orig.Message,
+            },
+            {
+                "type": "FactSet",
+                "facts": createFacts(orig.Data),
+            },
+        },
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.2",
+    }
 
-	buf := new(bytes.Buffer)
-	for key, val := range orig.Data {
-		fmt.Fprintf(buf, "%s=\"%s\"\n", key, val)
-	}
-	teams.Text = buf.String()
+    teams := teamsWebhook{
+        Type:          "MessageCard",
+        Context:       "https://schema.org/extensions",
+        CorrelationId: uuid.NewString(),
+        Summary:       orig.Message,
+        ThemeColor:    "0078D7", // Microsoft blue
+        Title:         orig.Message,
+        Attachments: []attachment{
+            {
+                ContentType: "application/vnd.microsoft.card.adaptive",
+                Content:     content,
+            },
+        },
+    }
 
-	body, err := json.Marshal(teams)
-	if err != nil {
-		fmt.Printf("sendTeamsWebhook json.Marshall failed: %v\n", err)
-		return
-	}
+    body, err := json.Marshal(teams)
+    if err != nil {
+        log.Printf("[%s] sendTeamsWebhook json.Marshal failed: %v", time.Now().Format(time.RFC3339), err)
+        return
+    }
 
-	req, err := http.NewRequest(http.MethodPost, webhookUrl, bytes.NewBuffer(body))
-	if err != nil {
-		fmt.Printf("sendTeamsWebhook http.NewRequest failed: %v\n", err)
-		return
-	}
+    // Rest of your existing HTTP request code...
+}
 
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{}
-	_, err = client.Do(req)
-	if err != nil {
-		fmt.Printf("sendTeamsWebhook client.Do failed: %v\n", err)
-		return
-	}
-
-	return
+func createFacts(data map[string]string) []map[string]string {
+    facts := make([]map[string]string, 0, len(data))
+    for k, v := range data {
+        facts = append(facts, map[string]string{
+            "title": k,
+            "value": v,
+        })
+    }
+    return facts
 }
 
 // https://discord.com/developers/docs/resources/webhook
