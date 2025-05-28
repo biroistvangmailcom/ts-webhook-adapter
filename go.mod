@@ -1,4 +1,4 @@
-module github.com/DentonGentry/ts-webhook-adapter
+module github.com/biroistvangmailcom/ts-webhook-adapter
 
 go 1.19
 
