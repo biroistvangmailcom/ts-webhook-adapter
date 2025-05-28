@@ -148,12 +148,12 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	secret := os.Getenv("TS_WEBHOOK_SECRET")
 	events, err := verifyWebhookSignature(r, secret)
 	if err != nil {
-		fmt.Printf("handleWebhook verifyWebhookSignature: %v\n", time.Now().Format(time.RFC3339Nano), err)
+		fmt.Printf("[%s] handleWebhook verifyWebhookSignature: %v\n", time.Now().Format(time.RFC3339Nano), err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	fmt.Printf("handleWebhook received %d events\n", time.Now().Format(time.RFC3339Nano), len(events))
+	fmt.Printf("[%s] handleWebhook received %d events\n", time.Now().Format(time.RFC3339Nano), len(events))
 	for _, event := range events {
 		sendTeamsWebhook(event)
 		sendDiscordWebhook(event)
